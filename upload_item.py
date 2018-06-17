@@ -275,7 +275,7 @@ def call_status(sheet_name):
 					call_setup.append("Band "+ str(int(band[i])) + " handover failed.")
 				else:
 					continue
-
+	return call_setup
 	print(call_setup)
 
 def check_call_status(data_xlsx):
