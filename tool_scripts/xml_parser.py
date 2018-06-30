@@ -1,8 +1,12 @@
 import xml.etree.ElementTree as ET
 import pandas as pd
 from collections import defaultdict
+import itertools
 
 class Xml_parser:
+    """
+    Main parser for collecting information from past test result XML files.
+    """
     def __init__(self, input_fp='', output_fp=None):
         """
         input_fp: XML path
@@ -15,17 +19,21 @@ class Xml_parser:
         self.tables = None
 
     def result_generation_helper(self):
-        # Core data processing function for XML.
-        # subject to significant changes as input format changes.
-        test_results = defaultdict(list)
+        """
+        Core data processing function for XML. Subject to changes as input format and requirements change.
+        :return: None
+        """
+        test_results = defaultdict(list)    # raw data collection
         for ds_collection in self.root.iter('DataSetCollection'):
-            for name, output in zip(ds_collection.iter('Name'), ds_collection.iter('Outputs')):
+            # Each test case run is organized under data set collection
+            iterators = [ds_collection.iter('Name'), ds_collection.iter('Outputs'), ds_collection.iter('Inputs')]
+            for name, output, inputs in zip(*iterators):    # for each testcase name, output collection and input collection...
                 temp = defaultdict()
-                for d in output.iter('DI'):
-                    for n, v in zip(d.iter('N'), d.iter('V')):
+                for d in itertools.chain(inputs.iter('DI'), output.iter('DI')): # combine two iterators and loop over
+                    for n, v in zip(d.iter('N'), d.iter('V')):                  # collect key-value pairs
                         temp[n.text] = v.text
-                test_results[name.text].append(temp)
-        final_res = defaultdict(dict)
+                test_results[name.text].append(temp)                      # dictionary in form  of testcase->list of results(dict)
+        final_res = defaultdict(dict)                                     # reshape data to form of testcase->dictionary of lists
         for testcase in test_results:
             d = defaultdict(list)
             for it in test_results[testcase]:
@@ -47,9 +55,4 @@ class Xml_parser:
                 pd.DataFrame.from_dict(self.tables[test], orient='index').T.to_excel(writer, test_name)
             except:
                 continue
-
-if __name__=='__main__':
-    input_ = input('Please input XML file location')
-    output_ = input('Please output report location')
-    parser = Xml_parser(input_, output_)
-    parser.generate_excel()
+                
