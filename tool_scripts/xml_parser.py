@@ -56,3 +56,40 @@ class Xml_parser:
             except:
                 continue
                 
+class Get_test_info(object):
+    
+    def __init__(self, input_file, output_data):
+        self.root = ET.parse(input_file).getroot()
+        self.output_data = output_data
+
+    def parse_xml(self):
+        test_info = {}
+        for date in self.root.iter("Date"):
+            month = [i.text for i in date.iter('MM')]
+            day = [i.text for i in date.iter('DD')]
+            year = [i.text for i in date.iter('YYYY')]
+        format_date = month[0]+"."+day[0]+"."+year[0]
+        test_info['Date'] = format_date
+        
+        
+        for station in self.root.iter("Tester"):
+            name = [i.text for i in station.iter('Name')]
+            
+            for sw_config_info in station.iter('SWConfigInfo'):
+                DLL = [i.text for i in sw_config_info.iter('N')][0]+'_'+[i.text for i in sw_config_info.iter('V')][0]
+        test_info['Station_ID'] = name[0]
+        test_info['DLL'] = DLL
+       
+        for build in self.root.iter("SWBuildID"):
+            SW_Build_ID = build.text
+        test_info['DUT_SW_Build'] = SW_Build_ID
+
+        for DUT in self.root.iter("DI"):
+            for i in DUT.iter('N'):
+                if i.text == "UUTID":
+                    HW_ID = [i.text for i in DUT.iter('V')][0]
+        test_info['DUT_HW_ID'] = HW_ID
+
+        print(test_info)
+output_array = Get_test_info(r'S:\User\tangtc\Testlog_analyzer\data\CRM439_sanity\Raw_Data\LTE-B1__3GPP_10MHz_Target_Sanity__Xvc\MAV19 Dev2__ELBOWZ__02May2018_15h25m14s.xml', [])
+output_array.parse_xml()
