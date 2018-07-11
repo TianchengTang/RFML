@@ -17,23 +17,26 @@ class Xml_parser:
             output_fp = input()
         self.output_fp = output_fp
         self.tables = None
-
+        
     def result_generation_helper(self):
-        """
-        Core data processing function for XML. Subject to changes as input format and requirements change.
-        :return: None
-        """
-        test_results = defaultdict(list)    # raw data collection
-        for ds_collection in self.root.iter('DataSetCollection'):
-            # Each test case run is organized under data set collection
-            iterators = [ds_collection.iter('Name'), ds_collection.iter('Outputs'), ds_collection.iter('Inputs')]
-            for name, output, inputs in zip(*iterators):    # for each testcase name, output collection and input collection...
-                temp = defaultdict()
-                for d in itertools.chain(inputs.iter('DI'), output.iter('DI')): # combine two iterators and loop over
-                    for n, v in zip(d.iter('N'), d.iter('V')):                  # collect key-value pairs
+        test_results = defaultdict(list)
+        for collection in self.root.iter('TestCollection'):
+            for test in collection.findall('Test'):
+                # each test has to have a name
+                testarea = test.find('Name').text.rstrip()
+                for ds_collection in test.findall('DataSetCollection'):
+                    collection_name = ds_collection.find('Name')
+
+                    temp = defaultdict()
+
+                    for d in ds_collection.iter('DI'):
+                        n, v = d.find('N'), d.find('V')
                         temp[n.text] = v.text
-                test_results[name.text].append(temp)                      # dictionary in form  of testcase->list of results(dict)
-        final_res = defaultdict(dict)                                     # reshape data to form of testcase->dictionary of lists
+                    if collection_name is not None:
+                        test_results[testarea +' ' + collection_name.text].append(temp)
+                    else:
+                        test_results[testarea + ' Inputs'].append(temp)
+        final_res = defaultdict(dict)
         for testcase in test_results:
             d = defaultdict(list)
             for it in test_results[testcase]:
