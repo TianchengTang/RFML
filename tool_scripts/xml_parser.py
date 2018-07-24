@@ -3,28 +3,21 @@ import pandas as pd
 from collections import defaultdict
 import itertools
 
-class Xml_parser:
-    """
-    Main parser for collecting information from past test result XML files.
-    """
-    def __init__(self, input_fp='', output_fp=None):
-        """
-        input_fp: XML path
-        output_fp: Excel/CSV path
-        """
-        self.root = ET.parse(input_fp).getroot()
-        if not output_fp:
-            output_fp = input()
-        self.output_fp = output_fp
-        self.tables = None
+class XML_processor:
+    def __init__(self, folder_path=None):
+        self.folder = folder_path
+        self.data = defaultdict(list)
+    
+    def result_generation_helper(self, xml):
+        root = ET.parse(xml).getroot()
         
-    def result_generation_helper(self):
         test_results = defaultdict(list)
-        for collection in self.root.iter('TestCollection'):
+        for collection in root.iter('TestCollection'):
             for test in collection.findall('Test'):
                 # each test has to have a name
                 testarea = test.find('Name').text.rstrip()
                 for ds_collection in test.findall('DataSetCollection'):
+                    # may not exist
                     collection_name = ds_collection.find('Name')
 
                     temp = defaultdict()
@@ -36,28 +29,21 @@ class Xml_parser:
                         test_results[testarea +' ' + collection_name.text].append(temp)
                     else:
                         test_results[testarea + ' Inputs'].append(temp)
-        final_res = defaultdict(dict)
+        print(test_results['LTE_SpectrumEmissionMask SEM Detail'])
+
         for testcase in test_results:
             d = defaultdict(list)
             for it in test_results[testcase]:
                 for kpi in it:
                     d[kpi].append(it[kpi])
-            final_res[testcase] = d
-        self.tables = final_res
-
-    def generate_excel(self):
-        if not self.tables:
-            # if table does not exist already, generate tables
-            self.result_generation_helper()
-        writer = pd.ExcelWriter(self.output_fp)
-        for test in self.tables:
-            test_name = test
-            if len(test_name) > 31:
-                test_name = test_name[:30]
-            try:
-                pd.DataFrame.from_dict(self.tables[test], orient='index').T.to_excel(writer, test_name)
-            except:
-                continue
+            self.data[testcase].append(d)
+    
+    def collect_data(self):
+        if self.folder is None:
+            self.folder = input()
+        for xml_file in Path(self.folder).glob('*.xml'):
+            self.result_generation_helper(xml_file)
+    
                 
 class Get_setup_info(object):
     
