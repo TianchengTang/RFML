@@ -4,58 +4,61 @@ from collections import defaultdict
 import itertools
 import pymongo
 
-class Xml_parser:
-    """
-    Main parser for collecting information from past test result XML files.
-    """
-    def __init__(self, input_fp='', output_fp=None):
-        """
-        input_fp: XML path
-        output_fp: Excel/CSV path
-        """
-        self.root = ET.parse(input_fp).getroot()
-        if not output_fp:
-            output_fp = input()
-        self.output_fp = output_fp
-        self.tables = None
+class XML_processor:
+    def __init__(self, folder_path=None):
+        self.folder = folder_path
+        self.data = []
 
-    def result_generation_helper(self):
-        """
-        Core data processing function for XML. Subject to changes as input format and requirements change.
-        :return: None
-        """
-        test_results = defaultdict(list)    # raw data collection
-        for ds_collection in self.root.iter('DataSetCollection'):
-            # Each test case run is organized under data set collection
-            iterators = [ds_collection.iter('Name'), ds_collection.iter('Outputs'), ds_collection.iter('Inputs')]
-            for name, output, inputs in zip(*iterators):    # for each testcase name, output collection and input collection...
-                temp = defaultdict()
-                for d in itertools.chain(inputs.iter('DI'), output.iter('DI')): # combine two iterators and loop over
-                    for n, v in zip(d.iter('N'), d.iter('V')):                  # collect key-value pairs
+    def result_generation_helper(self, xml):
+        root = ET.parse(xml).getroot()
+
+        # Initialize a dict of lists for storing test results
+        # test results are initially collected as dict[list[dict]]
+        test_results = defaultdict(list)
+
+        for collection in root.iter('TestCollection'):
+            # Typically the file only contains one collection
+            for test in collection.findall('Test'):
+                # looping through all test result collections
+                # each test has to have a name
+                testarea = test.find('Name').text.rstrip()
+                for ds_collection in test.findall('DataSetCollection'):
+                    # looping through each test case in test collection
+                    # may not exist
+                    collection_name = ds_collection.find('Name')
+
+                    # store result in each test case in a dict
+                    temp = defaultdict()
+
+                    for d in ds_collection.iter('DI'):
+                        n, v = d.find('N'), d.find('V')
                         temp[n.text] = v.text
-                test_results[name.text].append(temp)                      # dictionary in form  of testcase->list of results(dict)
-        final_res = defaultdict(dict)                                     # reshape data to form of testcase->dictionary of lists
+
+                    # attempt to use collection name
+                    # if not successful, it is an input section
+                    if collection_name is not None:
+                        test_results[testarea +' ' + collection_name.text].append(temp)
+                    else:
+                        test_results[testarea + ' Inputs'].append(temp)
+
+        # Given test_results in form dict[list[dict]]: testcase -> list of occurrences -> KPI
+        # Transform to dict[dict[list]]: testcase -> KPI -> list of results
+        final_res = defaultdict(list)
         for testcase in test_results:
+            # KPI -> list of results
             d = defaultdict(list)
             for it in test_results[testcase]:
                 for kpi in it:
                     d[kpi].append(it[kpi])
-            final_res[testcase] = d
-        self.tables = final_res
+            final_res[testcase].append(d)
+        self.data.append(final_res)
 
-    def generate_excel(self):
-        if not self.tables:
-            # if table does not exist already, generate tables
-            self.result_generation_helper()
-        writer = pd.ExcelWriter(self.output_fp)
-        for test in self.tables:
-            test_name = test
-            if len(test_name) > 31:
-                test_name = test_name[:30]
-            try:
-                pd.DataFrame.from_dict(self.tables[test], orient='index').T.to_excel(writer, test_name)
-            except:
-                continue
+    def collect_data(self):
+        if self.folder is None:
+            self.folder = input()
+        for xml_file in Path(self.folder).glob('*.xml'):
+            self.result_generation_helper(xml_file)
+            
                 
 class Get_setup_info(object):
     
@@ -105,6 +108,7 @@ class Get_setup_info(object):
         return setup_info
 
 
+<<<<<<< HEAD
 output_array = Get_setup_info(r'S:\User\tangtc\Testlog_analyzer\data\CRM439_sanity\Raw_Data\LTE-B1__3GPP_10MHz_Target_Sanity__Xvc\MAV19 Dev2__ELBOWZ__02May2018_15h25m14s.xml', [])
 setup_info = output_array.parse_xml()
 
@@ -120,3 +124,7 @@ class db_upload(object):
         db = db_connect[self.db_name]
         db_collection = db[self.collection_name]
         return db_collection
+=======
+output_array = Get_test_info(r'S:\User\tangtc\Testlog_analyzer\data\CRM439_sanity\Raw_Data\LTE-B1__3GPP_10MHz_Target_Sanity__Xvc\MAV19 Dev2__ELBOWZ__02May2018_15h25m14s.xml', [])
+setup_info = output_array.parse_xml()
+>>>>>>> 2df4d4daaf2033f117db783f2bf46076c2eaa55d
