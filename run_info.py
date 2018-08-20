@@ -3,6 +3,58 @@ import pandas as pd
 from collections import defaultdict
 import itertools
 import pymongo
+import os
+import glob
+
+
+def file_finder():
+    path = input('Please enter log files location: ')
+    folders= os.listdir(path)
+    os.chdir(path)
+    logs = []
+    for folder in folders:
+        if os.path.isdir(folder):
+            os.chdir(path+'\\'+folder)
+            files = glob.glob("*.xml")
+            if files:
+                logs.append(path+'\\'+folder+'\\'+files[0])
+            os.chdir(path)
+        elif os.path.isfile(folder):
+            files = glob.glob("*.xml")
+            if files:
+                logs.append(path+'\\'+folder+'\\'+files[0])
+            else:
+                print("No valid xml log found in this location.")
+                exit()
+        else:
+            print("No valid xml log found in this location.")
+            exit()
+    return logs
+
+logs = file_finder()
+
+def generate_uuid(logs):
+
+    root = ET.parse(logs[0]).getroot()
+    for date in root.iter("Date"):
+        month = [i.text for i in date.iter('MM')]
+        day = [i.text for i in date.iter('DD')]
+        year = [i.text for i in date.iter('YYYY')]
+    
+        
+    for time in root.iter("Time"):
+        for start_time in time.iter("Start"):
+            hour = [i.text for i in start_time.iter('HH')]
+            minute = [i.text for i in start_time.iter('MM')]
+            second = [i.text for i in start_time.iter('SS')]
+    UUID = str(len(logs))+month[0]+hour[0]+day[0]+minute[0]+year[0]+second[0]
+
+    return UUID
+UUID = generate_uuid(logs)
+
+def check_call(log):
+    root = ET.parse(log).getroot()
+    
 
 class Get_setup_info(object):
     
@@ -19,7 +71,6 @@ class Get_setup_info(object):
         format_date = month[0]+"."+day[0]+"."+year[0]
         setup_info['Date'] = format_date
         
-
         
         for station in self.root.iter("Tester"):
             name = [i.text for i in station.iter('Name')]
@@ -42,11 +93,11 @@ class Get_setup_info(object):
             setup_info['DUT_SW_Build'] = SW_Build_ID
           
         print(setup_info)
-        return setup_info
+        return setup_info, uid
 
 
-output_array = Get_setup_info(r'S:\User\tangtc\Testlog_analyzer\data\CRM439_sanity\Raw_Data\LTE-B1__3GPP_10MHz_Target_Sanity__Xvc\MAV19 Dev2__ELBOWZ__02May2018_15h25m14s.xml', [])
-setup_info = output_array.parse_xml()
+#output_array = Get_setup_info(r'S:\User\tangtc\Testlog_analyzer\data\CRM439_sanity\Raw_Data\LTE-B1__3GPP_10MHz_Target_Sanity__Xvc\MAV19 Dev2__ELBOWZ__02May2018_15h25m14s.xml', [])
+#setup_info = output_array.parse_xml()
 
 class db_upload(object):
 
