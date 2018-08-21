@@ -1,25 +1,31 @@
-def constructor(self, arg1):
-    self.msg = arg1
+from mongoengine import *
 
-def some_func(self, arg1):
-    print(arg1)
+# Read test case names
+with open('test_case_names.txt', 'rt') as f:
+    tests = []
+    for item in f.readlines():
+        tests.append(item.rstrip())
 
-@classmethod
-def some_class_method(cls, arg1):
-    print("{} - arg1: {}".format(cls.__name__, arg1))
+# generate classes for all tests
+test_classes = {}   # test case to class mapping
 
-NewClass = type("NewClass", (dict,), {
-    "string_val": "this is val1",
-    "int_val": 10,
-    "__init__": constructor,
-    "func_val": some_func,
-    "class_func": some_class_method,
-    # "save": save_func,
-})
+for test in tests:
+    values = {
+    'uuid': StringField(default='12345'),
+    'testcasename': StringField(default='test', required=True),
+    'data': DictField(),
+}
 
-instance = NewClass("hello dynamic class")
-print(instance.msg)
-print(instance.string_val)
-print(instance.int_val)
-instance.func_val("test")
-NewClass.class_func("test")
+    test_classes[test] = type(
+        test,
+        (Document, ),
+        values,
+    )
+
+
+## Save all data to MongoDB
+for doc in processor.data:
+    for testcase in doc:
+        doc_class = test_classes[testcase]
+        new_doc = doc_class(testcasename=testcase, data=doc[testcase])
+        new_doc.save()
