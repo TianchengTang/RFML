@@ -9,26 +9,54 @@ import glob
 
 def file_finder():
     path = input('Please enter log files location: ')
-    folders= os.listdir(path)
     os.chdir(path)
+    
     logs = []
-    for folder in folders:
-        if os.path.isdir(folder):
-            os.chdir(path+'\\'+folder)
-            files = glob.glob("*.xml")
-            if files:
-                logs.append(path+'\\'+folder+'\\'+files[0])
-            os.chdir(path)
-        elif os.path.isfile(folder):
-            files = glob.glob("*.xml")
-            if files:
-                logs.append(path+'\\'+folder+'\\'+files[0])
+    if "Raw_Data" in path:
+        folders= os.listdir(path)
+        for folder in folders:
+            if os.path.isdir(folder):
+                os.chdir(path+'\\'+folder)
+                files = glob.glob("*.xml")
+                if files:
+                    logs.append(path+'\\'+folder+'\\'+files[0])
+                os.chdir(path)
+            elif os.path.isfile(folder):
+                files = glob.glob("*.xml")
+                if files:
+                    logs.append(path+'\\'+folder+'\\'+files[0])
+                else:
+                    print("No valid xml log found in this location.")
+                    exit()
             else:
                 print("No valid xml log found in this location.")
                 exit()
-        else:
-            print("No valid xml log found in this location.")
-            exit()
+   
+    else:
+        for root, dirs, files in os.walk(path):
+            for dirname in dirs:
+                os.chdir(os.path.join(root, dirname))
+                if "Raw_Data" in dirname:
+                    currentdir= os.getcwd()
+                    folders= os.listdir(currentdir)
+                    for folder in folders:
+                        if os.path.isdir(folder):
+                            os.chdir(currentdir+'\\'+folder)
+                            files = glob.glob("*.xml")
+                            if files:
+                                logs.append(currentdir+'\\'+folder+'\\'+files[0])
+                            os.chdir(currentdir)
+                        elif os.path.isfile(folder):
+                            files = glob.glob("*.xml")
+                            if files:
+                                logs.append(currentdir+'\\'+folder+'\\'+files[0])
+                            else:
+                                print("No valid xml log found in this location.")
+                                exit()
+                        else:
+                            print("No valid xml log found in this location.")
+                            exit()
+
     return logs
 
 logs = file_finder()
@@ -50,11 +78,32 @@ def generate_uuid(logs):
     UUID = str(len(logs))+month[0]+hour[0]+day[0]+minute[0]+year[0]+second[0]
 
     return UUID
-UUID = generate_uuid(logs)
+#UUID = generate_uuid(logs)
 
 def check_call(log):
     root = ET.parse(log).getroot()
-    
+    precheck = {}
+    for testname in root.iter("Test"):
+        if testname.attrib.get('I') == "3095":
+            for child in testname.iter("PassFail"):
+                precheck['phonecomm'] = [i.text for i in child.iter("V")][0]
+        if testname.attrib.get('I') == "10105":
+            for child in testname.iter("PassFail"):
+                precheck['initbse'] = [i.text for i in child.iter("V")][0]
+        if testname.attrib.get('I') == "10110":
+            for child in testname.iter("PassFail"):
+                precheck['registration'] = [i.text for i in child.iter("V")][0]
+        if testname.attrib.get('I') == "10115":
+            for child in testname.iter("PassFail"):
+                precheck['callup'] = [i.text for i in child.iter("V")][0]
+        if testname.attrib.get('I') == "10120":
+            for child in testname.iter("PassFail"):
+                precheck['handover'] = [i.text for i in child.iter("V")][0]
+    print(precheck)
+
+
+
+check_call(logs[0])
 
 class Get_setup_info(object):
     
