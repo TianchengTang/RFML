@@ -138,7 +138,7 @@ class mongodb_filler:
         doc_classes = {}
         for test in self.xml_parser.testcases:
             values = {
-                'uuid': StringField(default='12345'),
+                'uuid': StringField(default=UUID),
                 'testcasename': StringField(default='test', required=True),
                 'data': DictField(),
             }
@@ -173,13 +173,14 @@ class Get_setup_info(object):
         format_date = month[0]+"."+day[0]+"."+year[0]
         setup_info['Date'] = format_date
         
-        for time in self.root.iter("Time"):
+
+        for time in root.iter("Time"):
             for start_time in time.iter("Start"):
                 hour = [i.text for i in start_time.iter('HH')]
                 minute = [i.text for i in start_time.iter('MM')]
                 second = [i.text for i in start_time.iter('SS')]
-        UUID = month[0]+hour[0]+day[0]+minute[0]+year[0]+second[0]
-        print(UUID)
+        UUID = str(len(logs))+month[0]+hour[0]+day[0]+minute[0]+year[0]+second[0]
+
         
         for station in self.root.iter("Tester"):
             name = [i.text for i in station.iter('Name')]
@@ -202,7 +203,7 @@ class Get_setup_info(object):
             setup_info['DUT_SW_Build'] = SW_Build_ID
           
         print(setup_info)
-        return setup_info
+        return setup_info, UUID
 
 
 output_array = Get_setup_info(r'S:\User\tangtc\Testlog_analyzer\data\CRM439_sanity\Raw_Data\LTE-B1__3GPP_10MHz_Target_Sanity__Xvc\MAV19 Dev2__ELBOWZ__02May2018_15h25m14s.xml', [])
