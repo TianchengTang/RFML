@@ -9,6 +9,7 @@ class XML_parser:
         self.folder = folder_path
         self.data = []
         self.testcases = set()
+        self.setup_info_gen = Get_setup_info()
 
     def precheck(self, xml):
         """
@@ -38,7 +39,7 @@ class XML_parser:
         return 'success'
     
         
-    def result_generation_helper(self, xml):
+    def result_generation_helper(self, xml, uuid):
         root = ET.parse(xml).getroot()
 
         # Initialize a dict of lists for storing test results
@@ -105,6 +106,7 @@ class XML_parser:
         # Given test_results in form dict[list[dict]]: testcase -> list of occurrences -> KPI
         # Transform to dict[dict[list]]: testcase -> KPI -> list of results
         final_res = defaultdict()
+        final_res['uuid'] = uuid
         for testcase in test_results:
             self.testcases.add(testcase)
             # Transform to KPI -> list of results
@@ -121,7 +123,8 @@ class XML_parser:
         for xml_file in Path(self.folder).glob('*.xml'):
             check_result = self.precheck(xml_file)
             if check_result == 'success':
-                self.result_generation_helper(xml_file)
+                _, uuid = self.setup_info_gen.parse_xml(xml_file)
+                self.result_generation_helper(xml_file, uuid)
             else:
                 print(check_result)
               
@@ -138,7 +141,7 @@ class mongodb_filler:
         doc_classes = {}
         for test in self.xml_parser.testcases:
             values = {
-                'uuid': StringField(default=UUID),
+                'uuid': StringField(default='12345'),
                 'testcasename': StringField(default='test', required=True),
                 'data': DictField(),
             }
@@ -151,19 +154,21 @@ class mongodb_filler:
     def fill_database(self):
         self.generate_classes()
         for doc in self.xml_parser.data:
+            uuid = doc['uuid']
             for testcase in doc:
-                doc_class = self.doc_classes[testcase]
-                new_doc = doc_class(testcasename=testcase, data=doc[testcase])
-                new_doc.save()
+                if testcase != 'uuid':
+                    doc_class = self.doc_classes[testcase]
+                    new_doc = doc_class(uuid=uuid, testcasename=testcase, data=doc[testcase])
+                    new_doc.save()
                 
                 
-class Get_setup_info(object):
+class Get_setup_info:
     
-    def __init__(self, input_file, output_data):
-        self.root = ET.parse(input_file).getroot()
-        self.output_data = output_data
+    def __init__(self):
+        pass
 
-    def parse_xml(self):
+    def parse_xml(self, file_path):
+        self.root = ET.parse(file_path).getroot()
         setup_info = {}
         for date in self.root.iter("Date"):
             month = [i.text for i in date.iter('MM')]
@@ -174,12 +179,12 @@ class Get_setup_info(object):
         setup_info['Date'] = format_date
         
 
-        for time in root.iter("Time"):
+        for time in self.root.iter("Time"):
             for start_time in time.iter("Start"):
                 hour = [i.text for i in start_time.iter('HH')]
                 minute = [i.text for i in start_time.iter('MM')]
                 second = [i.text for i in start_time.iter('SS')]
-        UUID = str(len(logs))+month[0]+hour[0]+day[0]+minute[0]+year[0]+second[0]
+        UUID = month[0]+hour[0]+day[0]+minute[0]+year[0]+second[0]
 
         
         for station in self.root.iter("Tester"):
@@ -202,8 +207,9 @@ class Get_setup_info(object):
                 SW_Build_ID = build.text
             setup_info['DUT_SW_Build'] = SW_Build_ID
           
-        print(setup_info)
+        # print(setup_info)
         return setup_info, UUID
+
 
 
 output_array = Get_setup_info(r'S:\User\tangtc\Testlog_analyzer\data\CRM439_sanity\Raw_Data\LTE-B1__3GPP_10MHz_Target_Sanity__Xvc\MAV19 Dev2__ELBOWZ__02May2018_15h25m14s.xml', [])
